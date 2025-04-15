@@ -3,6 +3,8 @@ import requests
 import time
 from bs4 import BeautifulSoup
 
+session = requests.Session()
+
 def parse_price(price_str):
     if not price_str:
         return None
@@ -18,7 +20,7 @@ def scrape_pet_cards(base_url: str):
         'User-Agent': (
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
             'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/134.0.0.0 Safari/537.36'
+            'Chrome/135.0.0.0 Safari/537.36'
         )
     }
     page_num = 1
@@ -26,22 +28,16 @@ def scrape_pet_cards(base_url: str):
 
     while True:
         url = f"{base_url}?pag={page_num}"
-        response = requests.get(url, headers=headers)
-
+        response = session.get(url, headers=headers)
+        time.sleep(2)
 
         delay = 0.5
-        max_retries = 10
-        retries = 0
-        
-        while retries < max_retries:
-            response = requests.get(url, headers=headers)
-            if response.status_code == 429:
-                print(f"429 received at page {page_num}. Waiting for {delay} seconds before retrying...")
-                time.sleep(delay)
-                delay *= 2
-                retries += 1
-            else:
-                break
+        count = 0
+
+        if response.status_code == 429:
+            print(f"429 received at page {page_num}. Waiting for {delay} seconds before retrying...")
+            time.sleep(2)
+            response = session.get(url, headers=headers)
 
         if response.status_code != 200:
             print(f"Failed to retrieve page {page_num}: {response.status_code}")
@@ -108,13 +104,21 @@ def scrape_pet_cards(base_url: str):
                 "service": None,
                 "promoted": is_promoted
             }
-
+            
             if link:
-                detail_delay = 0.1
-                time.sleep(detail_delay)
-                detail_response = requests.get(link, headers=headers)
+                time.sleep(0.5)
+                detail_response = session.get(link, headers=headers)
+                count = count + 1
+
+                if detail_response.status_code == 429:
+                    print('429 error on individual pet page ' + str(count) + ' on page ' + str(page_num))
+                    time.sleep(0.5)
+                    detail_response = session.get(link, headers=headers)
+                
                 if detail_response.status_code == 200:
+                    print(link)
                     detail_soup = BeautifulSoup(detail_response.text, 'html.parser')
+                    print('Scraping individual pet page ' + str(count) + ' on page ' + str(page_num))
                     attribute_items = detail_soup.find_all("div", class_="attribute-item")
                     breed = None
                     service = None
@@ -130,6 +134,7 @@ def scrape_pet_cards(base_url: str):
                             if value_div:
                                 service = value_div.get_text(strip=True)
                                 break
+                    
                     pet_data["breed"] = breed
                     pet_data["service"] = service
 
@@ -160,4 +165,4 @@ def scrape_pet_cards(base_url: str):
         page_num += 1
 
     return pet_cards_list
-#scrape_pet_cards()
+#scrape_pet_cards('https://www.animalutul.ro/anunturi/animale/caini/timis/timisoara/')

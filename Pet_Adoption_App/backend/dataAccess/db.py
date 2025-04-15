@@ -17,9 +17,9 @@ def insert_pet_cards(pet_cards_list):
     result = collection.insert_many(pet_cards_list)
     return result.inserted_ids
 
-def get_all_pet_cards():
+def get_all_pet_cards(filter_query={}):
     db = get_db()
     collection = db["animalutul"]
-    pet_cards = list(collection.find({}, {"_id": 0}))
+    pet_cards = list(collection.find(filter_query, {"_id": 0}))
     return pet_cards
 
