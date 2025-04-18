@@ -45,6 +45,9 @@ def scrape_pet_cards(base_url: str):
         if response.url.rstrip('/') == base_url.rstrip('/'):
             print(f"Reached the last page: {url}")
             break
+
+        # if page_num == 10:
+        #     break
             
         print(f"Scraping page {page_num}: {url}")
 
@@ -72,25 +75,18 @@ def scrape_pet_cards(base_url: str):
             image_url = img_element['src'] if img_element and img_element.has_attr('src') else None
 
             price_container = card.find('span', class_='article-price')
-            new_price_text = None
-            old_price_text = None
-            price_text = None
+            price_value = None
 
             if price_container:
                 new_price_elem = price_container.find('span', class_='new-price')
                 if new_price_elem:
                     new_price_text = new_price_elem.get_text(strip=True)
-                    old_price_elem = price_container.find('span', class_='old-price')
-                    if old_price_elem:
-                        old_price_text = old_price_elem.get_text(strip=True)
+                    price_value = parse_price(new_price_text)
                 else:
                     price_text = price_container.get_text(strip=True)
+                    price_value = parse_price(price_text)
 
-            price_data = {
-                "price_after_discount": parse_price(new_price_text),
-                "price_before_discount": parse_price(old_price_text),
-                "price_without_any_discounts": parse_price(price_text)
-            }
+            
 
             pet_data = {
                 "title": title_text,
@@ -99,7 +95,10 @@ def scrape_pet_cards(base_url: str):
                 "county": None,
                 "city": None,
                 "image_url": image_url,
-                "price": price_data,
+                "price": price_value,
+                "category": None,
+                "subcategory": None,
+                "species": None,
                 "breed": None,
                 "service": None,
                 "promoted": is_promoted
@@ -120,23 +119,53 @@ def scrape_pet_cards(base_url: str):
                     detail_soup = BeautifulSoup(detail_response.text, 'html.parser')
                     print('Scraping individual pet page ' + str(count) + ' on page ' + str(page_num))
                     attribute_items = detail_soup.find_all("div", class_="attribute-item")
+
                     breed = None
                     service = None
+                    species = None
                     for item in attribute_items:
                         label_div = item.find("div", class_="attribute-label")
+
                         if label_div and "Rase" in label_div.get_text():
                             value_div = item.find("div", class_="attribute-value")
                             if value_div:
                                 breed = value_div.get_text(strip=True)
                                 break
+
                         if label_div and "Servicii" in label_div.get_text():
                             value_div = item.find("div", class_="attribute-value")
                             if value_div:
                                 service = value_div.get_text(strip=True)
                                 break
+
+                        if label_div and "Specii" in label_div.get_text():
+                            value_div = item.find("div", class_="attribute-value")
+                            if value_div:
+                                species = value_div.get_text(strip=True)
+                                break
                     
                     pet_data["breed"] = breed
                     pet_data["service"] = service
+                    pet_data["species"] = species
+
+                    category = None
+                    sub_category = None
+                    li_elements = detail_soup.find_all("li", {"itemprop": "itemListElement"})
+                    for li in li_elements:
+                        pos_meta = li.find("meta", {"itemprop": "position"})
+                        if pos_meta:
+                            position = pos_meta.get("content", "")
+                            if position == "4":
+                                span_elem = li.find("span", {"itemprop": "name"})
+                                if span_elem:
+                                    category = span_elem.get_text(strip=True)
+                            elif position == "5":
+                                span_elem = li.find("span", {"itemprop": "name"})
+                                if span_elem:
+                                    sub_category = span_elem.get_text(strip=True)
+                    pet_data["category"] = category
+                    pet_data["subcategory"] = sub_category
+
 
 
             desc_div = detail_soup.find("div", class_="article-description", itemprop="description")

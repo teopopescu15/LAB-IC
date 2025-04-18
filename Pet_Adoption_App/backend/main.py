@@ -2,7 +2,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from controllers.PetController import router as data_router
-from controllers.URLController import router as url_router
 
 app = FastAPI(title="Pet Scraper API")
 
@@ -14,7 +13,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(url_router)
 app.include_router(data_router)
 
 
