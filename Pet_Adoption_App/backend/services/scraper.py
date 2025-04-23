@@ -1,3 +1,5 @@
+#it takes the data from the site,parses the html,looks for the pet card,and the price of the pet and puts each one in a
+
 import re
 import requests
 import time
