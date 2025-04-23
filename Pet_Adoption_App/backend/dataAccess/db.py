@@ -10,10 +10,11 @@ def get_db():
     db = client["pets"]
     return db
 
-def insert_pet_cards(pet_cards_list):
+def insert_pet_cards(pet_cards_list, overwrite):
     db = get_db()
     collection = db["animalutul"]
-    collection.delete_many({})
+    if overwrite:
+        collection.delete_many({})
     result = collection.insert_many(pet_cards_list)
     return result.inserted_ids
 

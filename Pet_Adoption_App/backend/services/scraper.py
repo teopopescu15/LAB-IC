@@ -33,11 +33,23 @@ def scrape_pet_cards(base_url: str):
 
         delay = 0.5
         count = 0
+        retries=0
+        max_retries=10
 
-        if response.status_code == 429:
-            print(f"429 received at page {page_num}. Waiting for {delay} seconds before retrying...")
-            time.sleep(2)
-            response = session.get(url, headers=headers)
+        # if response.status_code == 429:
+        #     print(f"429 received at page {page_num}. Waiting for {delay} seconds before retrying...")
+        #     time.sleep(2)
+        #     response = session.get(url, headers=headers)
+
+        while retries < max_retries:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 429:
+                print(f"429 received at page {page_num}. Waiting for {delay} seconds before retrying...")
+                time.sleep(delay)
+                delay *= 2
+                retries += 1
+            else:
+                break
 
         if response.status_code != 200:
             print(f"Failed to retrieve page {page_num}: {response.status_code}")

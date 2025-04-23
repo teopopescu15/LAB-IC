@@ -6,13 +6,16 @@ from dataAccess.db import insert_pet_cards, get_all_pet_cards
 router = APIRouter()
 
 @router.post("/update-data")
-def update_data():
-    pet_cards = scrape_pet_cards('https://www.animalutul.ro/anunturi/')
+def update_data(
+    url: str = Body(..., embed=True, description="The URL used in scraper"),
+    overwrite: bool = Body(False, embed=True, description="Clear database(true) or not(false) before inserting"),
+):
+    pet_cards = scrape_pet_cards(url)
     if not pet_cards:
         raise HTTPException(status_code=500, detail="No data scraped")
     try:
-        inserted_ids = insert_pet_cards(pet_cards)
-        return {"status": "success", "inserted_ids": [str(_id) for _id in inserted_ids]}
+        inserted_ids = insert_pet_cards(pet_cards, overwrite=overwrite)
+        return {"status": "success", "inserted_ids": [str(_id) for _id in inserted_ids], "url": url, "overwrite": overwrite}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
