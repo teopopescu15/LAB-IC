@@ -4,28 +4,27 @@ from services.scraper import scrape_pet_cards
 from dataAccess.db import insert_pet_cards, get_all_pet_cards
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.post("/update-data")
-def update_data():
-    pet_cards = scrape_pet_cards('https://www.animalutul.ro/anunturi/')
+def update_data(
+    url: str = Body(..., embed=True, description="The URL used in scraper"),
+    overwrite: bool = Body(False, embed=True, description="Clear database(true) or not(false) before inserting"),
+):
+    pet_cards = scrape_pet_cards(url)
     if not pet_cards:
         raise HTTPException(status_code=500, detail="No data scraped")
     try:
-        inserted_ids = insert_pet_cards(pet_cards)
+        inserted_ids = insert_pet_cards(pet_cards, overwrite=overwrite)
         return {"status": "success", "inserted_ids": [str(_id) for _id in inserted_ids]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/filters")
 def get_filters():
-    """
-    Get all available filters for the pet data.
-    """
     try:
         pets = get_all_pet_cards({})
         
@@ -42,7 +41,6 @@ def get_filters():
             
         logger.info(f"Fetched {len(pets)} pets for filters")
         
-        # Extract unique values for each filter with safe gets
         counties = list(set(p.get("county", "") for p in pets if p.get("county")))
         categories = list(set(p.get("category", "") for p in pets if p.get("category")))
         subcategories = list(set(p.get("subcategory", "") for p in pets if p.get("subcategory")))
@@ -64,6 +62,8 @@ def get_filters():
         logger.error(f"Error fetching filters: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching filters: {str(e)}")
 
+
+
 @router.get("/pets")
 def get_pets(
     description_regex: Optional[str] = Query(None, description="Filtru pentru descriere"),
@@ -80,7 +80,6 @@ def get_pets(
     try:
         filter_query = {}
         
-        # Log all filter parameters
         logger.info(f"Filter params: county={county}, category={category}, subcategory={subcategory}, species={species}, breed={breed}, service={service}")
         
         if description_regex:
@@ -112,14 +111,12 @@ def get_pets(
         try:
             pets = get_all_pet_cards(filter_query)
             
-            # If pets is None, return an empty list
             if pets is None:
                 logger.warning("get_all_pet_cards returned None, using empty list instead")
                 pets = []
                 
             logger.info(f"Found {len(pets)} pets matching criteria")
             
-            # Add _id field for frontend if missing
             for pet in pets:
                 if "_id" not in pet:
                     pet["_id"] = str(hash(pet.get("link", "") or ""))

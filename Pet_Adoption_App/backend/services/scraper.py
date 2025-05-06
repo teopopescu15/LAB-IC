@@ -1,5 +1,3 @@
-#it takes the data from the site,parses the html,looks for the pet card,and the price of the pet and puts each one in a
-
 import re
 import requests
 import time
@@ -196,4 +194,3 @@ def scrape_pet_cards(base_url: str):
         page_num += 1
 
     return pet_cards_list
-#scrape_pet_cards('https://www.animalutul.ro/anunturi/animale/caini/timis/timisoara/')
