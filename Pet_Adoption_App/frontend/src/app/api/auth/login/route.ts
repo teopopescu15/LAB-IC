@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import bcrypt from 'bcryptjs';
 import dbConnect from "@/lib/dbConnect";
 import User from "@/models/User";
+import bcrypt from 'bcryptjs';
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   console.log("Login API route called");
