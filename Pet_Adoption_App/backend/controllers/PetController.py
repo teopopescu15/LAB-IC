@@ -33,30 +33,21 @@ def get_filters():
             return {
                 "counties": [],
                 "categories": [],
-                "subcategories": [],
                 "breeds": [],
-                "services": [],
-                "species": []
             }
             
         logger.info(f"Fetched {len(pets)} pets for filters")
         
         counties = list(set(p.get("county", "") for p in pets if p.get("county")))
         categories = list(set(p.get("category", "") for p in pets if p.get("category")))
-        subcategories = list(set(p.get("subcategory", "") for p in pets if p.get("subcategory")))
         breeds = list(set(p.get("breed", "") for p in pets if p.get("breed")))
-        services = list(set(p.get("service", "") for p in pets if p.get("service")))
-        species = list(set(p.get("species", "") for p in pets if p.get("species")))
         
-        logger.info(f"Filter counts: counties={len(counties)}, categories={len(categories)}, subcategories={len(subcategories)}")
+        logger.info(f"Filter counts: counties={len(counties)}, categories={len(categories)}")
         
         return {
             "counties": counties,
             "categories": categories,
-            "subcategories": subcategories,
             "breeds": breeds,
-            "services": services,
-            "species": species
         }
     except Exception as e:
         logger.error(f"Error fetching filters: {str(e)}")
@@ -69,19 +60,16 @@ def get_pets(
     description_regex: Optional[str] = Query(None, description="Filtru pentru descriere"),
     county: Optional[str] = Query(None, description="Filtru pentru judet"),
     city: Optional[str] = Query(None, description="Filtru pentru oras"),
-    category: Optional[str] = Query(None, description="Filtru pentru categoria principala (caini, pisici, animale de ferma, adoptii ...)"),
-    subcategory: Optional[str] = Query(None, description="Filtru pentru categoria secundara (oi, porci, vaci ...)"),
-    species: Optional[str] = Query(None, description="Filtru pentru specii (porumbei, fazani, canar, perusi ...)"),
+    category: Optional[str] = Query(None, description="Filtru pentru categoria principala (caini, pisici, adoptii)"),
     breed: Optional[str] = Query(None, description="Filtru pentru rasa"),
-    service: Optional[str] = Query(None, description="Filtru pentru servicii (dresaj si cosmetica)"),
     min_price: Optional[float] = Query(None, description="Pret minim"),
     max_price: Optional[float] = Query(None, description="Pret maxim")
 ):
     try:
         filter_query = {}
         
-        logger.info(f"Filter params: county={county}, category={category}, subcategory={subcategory}, species={species}, breed={breed}, service={service}")
-        
+        logger.info(f"Filter params: county={county}, category={category}, breed={breed}")
+
         if description_regex:
             filter_query["description"] = {"$regex": description_regex, "$options": "i"}
         if county:
@@ -90,14 +78,8 @@ def get_pets(
             filter_query["city"] = city
         if category:
             filter_query["category"] = category
-        if subcategory:
-            filter_query["subcategory"] = subcategory
-        if species:
-            filter_query["species"] = species
         if breed:
             filter_query["breed"] = breed
-        if service:
-            filter_query["service"] = service
         if min_price is not None or max_price is not None:
             price_filter = {}
             if min_price is not None:

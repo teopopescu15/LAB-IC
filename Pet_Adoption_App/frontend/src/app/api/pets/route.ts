@@ -169,7 +169,7 @@ export async function GET() {
           'Accept': 'application/json'
         },
         // Add a reasonable timeout
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(20000)
       });
       
       if (!response.ok) {
