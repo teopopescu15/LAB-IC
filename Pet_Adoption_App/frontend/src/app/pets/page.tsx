@@ -31,6 +31,11 @@ export default function PetsPage() {
   const [filteredPets, setFilteredPets] = useState<Pet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const petsPerPage = 30;
+
   const [filters, setFilters] = useState({
     species: "all",
     gender: "all",
@@ -45,6 +50,12 @@ export default function PetsPage() {
     locations: [] as string[],
     categories: [] as string[],
   });
+
+  // Calculate pagination data
+  const totalPages = Math.ceil(filteredPets.length / petsPerPage);
+  const startIndex = (currentPage - 1) * petsPerPage;
+  const endIndex = startIndex + petsPerPage;
+  const currentPets = filteredPets.slice(startIndex, endIndex);
 
   useEffect(() => {
     fetchPets();
@@ -122,6 +133,8 @@ export default function PetsPage() {
       });
 
       setFilteredPets(filtered);
+      // Reset to first page when filters change
+      setCurrentPage(1);
     }
   }, [pets, filters, searchQuery]);
 
@@ -154,6 +167,56 @@ export default function PetsPage() {
     }
   }
 
+  // Pagination helper functions
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      goToPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      goToPage(currentPage + 1);
+    }
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const delta = 2; // Number of pages to show on each side of current page
+    const range = [];
+    const rangeWithDots = [];
+
+    for (
+      let i = Math.max(2, currentPage - delta);
+      i <= Math.min(totalPages - 1, currentPage + delta);
+      i++
+    ) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, "...");
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push("...", totalPages);
+    } else {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -167,6 +230,14 @@ export default function PetsPage() {
           <p className="text-lg text-gray-600">
             Descoperă-ți viitorul prieten blănos
           </p>
+          {/* Results count */}
+          {!isLoading && !error && (
+            <p className="text-sm text-gray-500 mt-2">
+              Afișăm {startIndex + 1}-{Math.min(endIndex, filteredPets.length)}{" "}
+              din {filteredPets.length} rezultate
+              {currentPage > 1 && ` (Pagina ${currentPage} din ${totalPages})`}
+            </p>
+          )}
         </div>
 
         {/* Filters Section */}
@@ -291,9 +362,9 @@ export default function PetsPage() {
             ))}
           </div>
         ) : (
-          /* Pets Grid */
+          /* Pets Grid - Now showing only current page pets */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPets.map((pet) => (
+            {currentPets.map((pet) => (
               <div
                 key={pet.id}
                 className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 ${
@@ -365,6 +436,89 @@ export default function PetsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!isLoading && !error && filteredPets.length > 0 && totalPages > 1 && (
+          <div className="mt-12 mb-8">
+            <div className="flex flex-col items-center space-y-4">
+              {/* Page info */}
+              <div className="text-sm text-gray-600">
+                Pagina {currentPage} din {totalPages}
+                <span className="mx-2">•</span>
+                {filteredPets.length} animăluțe găsite
+              </div>
+
+              {/* Pagination buttons */}
+              <div className="flex items-center space-x-2">
+                {/* Previous button */}
+                <button
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                    currentPage === 1
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-purple-50 hover:text-purple-600 border border-gray-300"
+                  }`}
+                >
+                  ← Anterior
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center space-x-1">
+                  {getPageNumbers().map((pageNumber, index) => (
+                    <span key={index}>
+                      {pageNumber === "..." ? (
+                        <span className="px-3 py-2 text-gray-400">...</span>
+                      ) : (
+                        <button
+                          onClick={() => goToPage(Number(pageNumber))}
+                          className={`px-3 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                            currentPage === pageNumber
+                              ? "bg-purple-600 text-white"
+                              : "bg-white text-gray-700 hover:bg-purple-50 hover:text-purple-600 border border-gray-300"
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Next button */}
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                    currentPage === totalPages
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white text-gray-700 hover:bg-purple-50 hover:text-purple-600 border border-gray-300"
+                  }`}
+                >
+                  Următor →
+                </button>
+              </div>
+
+              {/* Quick jump to first/last */}
+              {totalPages > 10 && (
+                <div className="flex items-center space-x-4 text-sm">
+                  <button
+                    onClick={() => goToPage(1)}
+                    className="text-purple-600 hover:text-purple-800 hover:underline"
+                  >
+                    Prima pagină
+                  </button>
+                  <button
+                    onClick={() => goToPage(totalPages)}
+                    className="text-purple-600 hover:text-purple-800 hover:underline"
+                  >
+                    Ultima pagină
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

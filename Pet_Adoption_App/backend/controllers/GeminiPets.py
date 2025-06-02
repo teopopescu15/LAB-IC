@@ -5,13 +5,21 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Optional
 
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 from dataAccess.db import get_all_pet_cards
 
 load_dotenv()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Check if API key is configured
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key or api_key == "your_gemini_api_key_here":
+    print("⚠️  WARNING: GEMINI_API_KEY not configured or using placeholder value!")
+    print("🔧 Please add your real Gemini API key to backend/.env file")
+    print("🌐 Get your API key from: https://makersuite.google.com/app/apikey")
+else:
+    genai.configure(api_key=api_key)
+    print("✅ Gemini API configured successfully")
 
 router = APIRouter()
 
@@ -37,12 +45,12 @@ Mapping rules:
 • Map location words to county or city (they are case sensitive, so they always start with a capital letter).
 • Category must be one of: Caini, Pisici, Adoptii (case-sensitive).
 • If user asks for an adoption, set breed to null and look inside description with description_regex on whether it is a cat or a dog ( you can also look for derogatives, like kitten, doggy etc).
-* do not use plural for breed nor caps, since it is case-sensitive.
-• Use null for any field the user doesn’t specify.
+* do not use plural for breed
+• Use null for any field the user doesn't specify.
 
 Description inference:
 • If the user mentions traits (e.g. "pure breed", "small", "playful"), combine them into one regex, e.g. "(pure breed|small|playful)".
-• If the user implies a small animal (e.g. "etajul 40", "bloc turn", "apartament mic", or any other situation where it implies a small dog is preferable), include "mic" or "mica" in description_regex.
+• If the user implies a small animal (e.g. "etajul 40", "bloc turn", "apartament mic", or any other situation where it implies a small dog is preferable), include "mic" in description_regex.
 • If the user hints at limited budget without a number (e.g. "low-income", "nu îmi permit prea mult"  or any other situation where it implies such a thing), default max_price to 1200.
 
 Return exactly one valid JSON object—no extra text or formatting.
@@ -53,20 +61,26 @@ Return exactly one valid JSON object—no extra text or formatting.
 def get_pets_gemini(
     prompt: str = Query(..., description="Natural-language description of the filters")
 ):
+    # Check if API key is configured
+    if not api_key or api_key == "your_gemini_api_key_here":
+        raise HTTPException(
+            status_code=503, 
+            detail="Gemini API not configured. Please add GEMINI_API_KEY to .env file. Get your key from: https://makersuite.google.com/app/apikey"
+        )
 
     try:
-        config = types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=PetFilter,
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            generation_config={
+                "response_mime_type": "application/json",
+                "response_schema": PetFilter
+            },
             system_instruction=SYSTEM_PROMPT
         )
-        resp = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config=config
-        )
+        resp = model.generate_content(prompt)
         filters = json.loads(resp.text)
     except Exception as e:
+        print(f"❌ Gemini API Error: {e}")
         raise HTTPException(status_code=500, detail=f"Error parsing filters from Gemini: {e}")
 
 
@@ -106,6 +120,8 @@ def get_pets_gemini(
 
     try:
         pets = get_all_pet_cards(mongo_filter)
+        print(f"✅ Found {len(pets)} pets matching criteria: {mongo_filter}")
         return pets
     except Exception as e:
+        print(f"❌ Database Error: {e}")
         raise HTTPException(status_code=500, detail=f"Database query error: {e}")

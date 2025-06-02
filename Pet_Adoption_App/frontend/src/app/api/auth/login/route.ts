@@ -40,15 +40,29 @@ export async function POST(request: Request) {
     
     console.log("Login successful for user:", user.email);
     
-    // Return user info (exclude password)
-    return NextResponse.json({
+    // Create user session data
+    const userSession = {
+      id: user._id,
+      name: user.name,
+      email: user.email
+    };
+    
+    // Create response with user info
+    const response = NextResponse.json({
       message: 'Login successful',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email
-      }
+      user: userSession
     });
+    
+    // Set session cookie (expires in 7 days)
+    response.cookies.set("user-session", JSON.stringify(userSession), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+    
+    return response;
   } catch (error: any) {
     console.error("Login error:", error);
     return NextResponse.json(

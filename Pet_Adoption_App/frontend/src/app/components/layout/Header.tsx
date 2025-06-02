@@ -2,38 +2,65 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<{
+    id: string;
+    name: string;
+    email: string;
+  } | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    // Check login status only once on mount
-    async function checkLoginStatus() {
-      try {
-        const response = await fetch("/api/auth/session", {
-          // Add cache headers
-          headers: {
-            "Cache-Control": "no-cache",
-          },
-        });
-        const data = await response.json();
-        setIsLoggedIn(!!data.user);
-      } catch (error) {
-        console.error("Failed to check login status", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     checkLoginStatus();
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
+
+  async function checkLoginStatus() {
+    try {
+      const response = await fetch("/api/auth/session", {
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      const data = await response.json();
+
+      if (data.user) {
+        setIsLoggedIn(true);
+        setUser(data.user);
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Failed to check login status", error);
+      setIsLoggedIn(false);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   async function handleLogout() {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      setIsLoggedIn(false);
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (response.ok) {
+        setIsLoggedIn(false);
+        setUser(null);
+        // Redirect to home page after logout
+        router.push("/");
+      } else {
+        console.error("Logout failed");
+      }
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -41,39 +68,68 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Left side - Logo and Navigation */}
-          <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2 group">
-              <div className="relative w-8 h-8">
+      <nav className="w-full px-1 sm:px-2">
+        <div className="flex justify-between items-center h-16 lg:h-20 max-w-7xl mx-auto">
+          {/* Left corner - Logo positioned at the very left edge */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14">
                 <Image
                   src="/images/petpals-icon.png"
                   alt="PetPals Logo"
-                  width={32}
-                  height={32}
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-contain"
                 />
               </div>
-              <span className="text-xl font-bold text-blue-600">PetPals</span>
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-600 tracking-tight">
+                PetPals
+              </span>
             </Link>
           </div>
 
-          {/* Right side - Auth Buttons */}
-          <div className="flex items-center space-x-4">
-            <>
-              <Link
-                href="/auth/login"
-                className="bg-blue-600 hover:bg-purple-700 text-white px-4 py-2 rounded-full transition-colors duration-200"
-              >
-                Conectare
-              </Link>
-              <Link
-                href="/auth/signup"
-                className="bg-gray-100 text-gray-800 px-4 py-2 rounded-full hover:bg-gray-200 transition-colors duration-200 border border-gray-200"
-              >
-                Înregistrare
-              </Link>
-            </>
+          {/* Right corner - Auth Buttons positioned at the very right edge */}
+          <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
+            {isLoading ? (
+              // Loading state
+              <div className="animate-pulse">
+                <div className="h-8 lg:h-12 w-20 lg:w-24 bg-gray-200 rounded-full"></div>
+              </div>
+            ) : isLoggedIn ? (
+              // Logged in state - Show user info and logout button
+              <div className="flex items-center space-x-3 lg:space-x-4">
+                <div className="hidden sm:flex flex-col text-right">
+                  <span className="text-sm lg:text-base font-medium text-gray-800">
+                    Bună, {user?.name}!
+                  </span>
+                  <span className="text-xs lg:text-sm text-gray-500">
+                    {user?.email}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 rounded-full transition-all duration-200 font-semibold text-xs sm:text-sm lg:text-base shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  Deconectare
+                </button>
+              </div>
+            ) : (
+              // Not logged in state - Show login and signup buttons
+              <>
+                <Link
+                  href="/auth/login"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-5 lg:px-7 py-2 sm:py-3 lg:py-4 rounded-full transition-all duration-200 font-semibold text-xs sm:text-sm lg:text-base shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  Conectare
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 sm:px-5 lg:px-7 py-2 sm:py-3 lg:py-4 rounded-full transition-all duration-200 border border-gray-300 hover:border-gray-400 font-semibold text-xs sm:text-sm lg:text-base shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  Înregistrare
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
