@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface Pet {
   id: string;
@@ -36,20 +36,8 @@ export default function PetsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const petsPerPage = 30;
 
-  const [filters, setFilters] = useState({
-    species: "all",
-    gender: "all",
-    size: "all",
-    location: "all",
-    category: "all",
-    price: "all",
-    promoted: "all",
-  });
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterOptions, setFilterOptions] = useState({
-    locations: [] as string[],
-    categories: [] as string[],
-  });
+  const [isSearching, setIsSearching] = useState(false);
 
   // Calculate pagination data
   const totalPages = Math.ceil(filteredPets.length / petsPerPage);
@@ -61,89 +49,25 @@ export default function PetsPage() {
     fetchPets();
   }, []);
 
-  // Extract filter options when pets data is loaded
-  useEffect(() => {
-    if (pets.length > 0) {
-      // Extract unique counties for location filter
-      const locations = Array.from(
-        new Set(pets.map((pet) => pet.countyRaw))
-      ).sort();
-
-      // Extract unique categories
-      const categories = Array.from(
-        new Set(pets.map((pet) => pet.category))
-      ).sort();
-
-      setFilterOptions({
-        locations,
-        categories,
-      });
-    }
-  }, [pets]);
-
-  // Apply filters and search whenever they change
-  useEffect(() => {
-    if (pets.length > 0) {
-      const filtered = pets.filter((pet) => {
-        // Check if pet matches all selected filters
-        if (filters.species !== "all" && pet.species !== filters.species)
-          return false;
-        if (filters.gender !== "all" && pet.gender !== filters.gender)
-          return false;
-        if (filters.size !== "all" && pet.size !== filters.size) return false;
-        if (filters.location !== "all" && pet.countyRaw !== filters.location)
-          return false;
-        if (filters.category !== "all" && pet.category !== filters.category)
-          return false;
-        if (filters.promoted !== "all") {
-          if (filters.promoted === "yes" && !pet.promoted) return false;
-          if (filters.promoted === "no" && pet.promoted) return false;
-        }
-
-        if (filters.price !== "all") {
-          if (filters.price === "under500" && pet.price >= 500) return false;
-          if (
-            filters.price === "500to1000" &&
-            (pet.price < 500 || pet.price > 1000)
-          )
-            return false;
-          if (
-            filters.price === "1000to2000" &&
-            (pet.price < 1000 || pet.price > 2000)
-          )
-            return false;
-          if (filters.price === "over2000" && pet.price <= 2000) return false;
-        }
-
-        // Check if pet matches search query
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          return (
-            pet.name.toLowerCase().includes(query) ||
-            pet.breed.toLowerCase().includes(query) ||
-            pet.location.toLowerCase().includes(query) ||
-            pet.description.toLowerCase().includes(query) ||
-            (pet.subcategory &&
-              pet.subcategory.toLowerCase().includes(query)) ||
-            (pet.serviceType && pet.serviceType.toLowerCase().includes(query))
-          );
-        }
-
-        return true;
-      });
-
-      setFilteredPets(filtered);
-      // Reset to first page when filters change
-      setCurrentPage(1);
-    }
-  }, [pets, filters, searchQuery]);
-
-  async function fetchPets() {
+  async function fetchPets(prompt?: string) {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/pets");
+      let url = "/api/pets";
+
+      // If there's a search prompt, use the Gemini API route
+      if (prompt && prompt.trim()) {
+        setIsSearching(true);
+        url = `/api/pets/gemini?prompt=${encodeURIComponent(prompt.trim())}`;
+      }
+
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error(`Error fetching pets: ${response.status}`);
@@ -157,15 +81,36 @@ export default function PetsPage() {
 
       setPets(data);
       setFilteredPets(data);
+      setIsSearching(false);
     } catch (error) {
       console.error("Failed to fetch pets:", error);
       setError(
         "Nu am putut încărca datele. Te rugăm să încerci din nou mai târziu."
       );
+      setIsSearching(false);
     } finally {
       setIsLoading(false);
     }
   }
+
+  // Handle search submission
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      await fetchPets(searchQuery);
+      setCurrentPage(1); // Reset to first page
+    } else {
+      // If search is empty, fetch all pets
+      await fetchPets();
+    }
+  };
+
+  // Clear search
+  const clearSearch = async () => {
+    setSearchQuery("");
+    await fetchPets();
+    setCurrentPage(1);
+  };
 
   // Pagination helper functions
   const goToPage = (page: number) => {
@@ -228,7 +173,8 @@ export default function PetsPage() {
             </span>
           </h1>
           <p className="text-lg text-gray-600">
-            Descoperă-ți viitorul prieten blănos
+            Descoperă-ți viitorul prieten blănos cu ajutorul inteligenței
+            artificiale
           </p>
           {/* Results count */}
           {!isLoading && !error && (
@@ -240,100 +186,81 @@ export default function PetsPage() {
           )}
         </div>
 
-        {/* Filters Section */}
+        {/* AI Search Section */}
         <div className="bg-white rounded-2xl shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            {/* Search Bar */}
-            <div className="lg:col-span-4 text-gray-900">
-              <input
-                type="text"
-                placeholder="Caută după nume, rasă sau locație..."
-                className="w-full px-4 py-3 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600 focus:border-transparent"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+                🤖 Căutare cu Inteligență Artificială
+              </h2>
+              <p className="text-gray-600">
+                Descrie în cuvintele tale ce animal cauți și AI-ul nostru te va
+                ajuta să-l găsești!
+              </p>
             </div>
 
-            {/* Filter Buttons */}
-            <select
-              className="px-4 py-2 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600"
-              value={filters.species}
-              onChange={(e) =>
-                setFilters({ ...filters, species: e.target.value })
-              }
-            >
-              <option value="all">Toate speciile</option>
-              <option value="dog">Câini</option>
-              <option value="cat">Pisici</option>
-              <option value="other">Alte specii</option>
-            </select>
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="relative">
+                <textarea
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Exemplu: Caut un cățel mic și prietenos în Cluj, sub 1000 lei... sau Vreau o pisică pentru adopție în București..."
+                  className="w-full px-6 py-4 text-gray-900 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-purple-600 focus:border-transparent resize-none"
+                  rows={3}
+                  disabled={isSearching}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
 
-            <select
-              className="px-4 py-2 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600"
-              value={filters.gender}
-              onChange={(e) =>
-                setFilters({ ...filters, gender: e.target.value })
-              }
-            >
-              <option value="all">Toate genurile</option>
-              <option value="male">Mascul</option>
-              <option value="female">Femelă</option>
-            </select>
+              <div className="flex justify-center space-x-4">
+                <button
+                  type="submit"
+                  disabled={isSearching || !searchQuery.trim()}
+                  className="bg-purple-600 text-white px-8 py-3 rounded-full hover:bg-purple-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                >
+                  {isSearching ? "🔍 Caut..." : "🔍 Caută cu AI"}
+                </button>
 
-            <select
-              className="px-4 py-2 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600"
-              value={filters.category}
-              onChange={(e) =>
-                setFilters({ ...filters, category: e.target.value })
-              }
-            >
-              <option value="all">Toate categoriile</option>
-              {filterOptions.categories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="bg-gray-200 text-gray-700 px-8 py-3 rounded-full hover:bg-gray-300 transition-colors duration-200 font-medium"
+                  >
+                    Afișează toate
+                  </button>
+                )}
+              </div>
+            </form>
 
-            <select
-              className="px-4 py-2 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600"
-              value={filters.location}
-              onChange={(e) =>
-                setFilters({ ...filters, location: e.target.value })
-              }
-            >
-              <option value="all">Toate locațiile</option>
-              {filterOptions.locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className="px-4 py-2 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600"
-              value={filters.size}
-              onChange={(e) => setFilters({ ...filters, size: e.target.value })}
-            >
-              <option value="all">Toate mărimile</option>
-              <option value="small">Mic</option>
-              <option value="medium">Mediu</option>
-              <option value="large">Mare</option>
-            </select>
-
-            <select
-              className="px-4 py-2 rounded-full border border-gray-200 focus:ring-2 focus:ring-purple-600"
-              value={filters.price}
-              onChange={(e) =>
-                setFilters({ ...filters, price: e.target.value })
-              }
-            >
-              <option value="all">Toate prețurile</option>
-              <option value="under500">Sub 500 lei</option>
-              <option value="500to1000">500-1000 lei</option>
-              <option value="1000to2000">1000-2000 lei</option>
-              <option value="over2000">Peste 2000 lei</option>
-            </select>
+            {/* Example searches */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-500 mb-3">Exemple de căutări:</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {[
+                  "Caut un cățel mic în Cluj sub 500 lei",
+                  "Pisică pentru adopție în București",
+                  "Câine de rasă pură în Timișoara",
+                  "Animal mic pentru apartament",
+                ].map((example) => (
+                  <button
+                    key={example}
+                    onClick={() => setSearchQuery(example)}
+                    className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full hover:bg-purple-200 transition-colors"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -341,7 +268,10 @@ export default function PetsPage() {
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
             <p className="text-red-700">{error}</p>
-            <button onClick={fetchPets} className="mt-2 text-red-700 underline">
+            <button
+              onClick={() => fetchPets()}
+              className="mt-2 text-red-700 underline"
+            >
               Încearcă din nou
             </button>
           </div>
@@ -402,9 +332,6 @@ export default function PetsPage() {
                   <div className="flex gap-2 mb-3 flex-wrap">
                     <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-sm">
                       {pet.breed}
-                    </span>
-                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-sm">
-                      {pet.gender === "male" ? "Mascul" : "Femelă"}
                     </span>
                     <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-sm">
                       {pet.category}
