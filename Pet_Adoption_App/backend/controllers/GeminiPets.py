@@ -1,13 +1,14 @@
 import os
 import json
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Optional
+import tempfile
 
 import google.generativeai as genai
 
-from dataAccess.db import get_all_pet_cards
+from dataAccess.db import get_all_pet_cards, get_db
 
 load_dotenv()
 
@@ -125,3 +126,45 @@ def get_pets_gemini(
     except Exception as e:
         print(f"❌ Database Error: {e}")
         raise HTTPException(status_code=500, detail=f"Database query error: {e}")
+
+@router.post("/pets/voice-to-text")
+async def voice_to_text(audio_file: UploadFile = File(...)):
+    """Convert voice audio to text using Gemini API - Direct approach"""
+    
+    # Check if API key is configured
+    if not api_key or api_key == "your_gemini_api_key_here":
+        raise HTTPException(
+            status_code=503, 
+            detail="Gemini API not configured. Please add GEMINI_API_KEY to .env file."
+        )
+    
+    try:
+        # Read audio content as bytes
+        audio_bytes = await audio_file.read()
+        
+        # Create model for audio transcription
+        model = genai.GenerativeModel(model_name="gemini-2.0-flash-exp")
+        
+        # Create audio part directly from bytes
+        audio_part = {
+            "mime_type": "audio/webm",
+            "data": audio_bytes
+        }
+        
+        # Generate transcription
+        response = model.generate_content([
+            "Please transcribe this audio to text in Romanian. Return only the transcription, no additional text or formatting.",
+            audio_part
+        ])
+        
+        return {
+            "transcript": response.text.strip(),
+            "success": True
+        }
+            
+    except Exception as e:
+        print(f"❌ Gemini Voice-to-Text Error: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Voice transcription failed: {str(e)}"
+        )

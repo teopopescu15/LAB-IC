@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import GeminiVoiceSearch from "../components/GeminiVoiceSearch";
 
 interface Pet {
   id: string;
@@ -220,24 +221,23 @@ export default function PetsPage() {
                 )}
               </div>
 
-              <div className="flex justify-center space-x-4">
+              <div className="flex gap-2">
                 <button
                   type="submit"
                   disabled={isSearching || !searchQuery.trim()}
-                  className="bg-purple-600 text-white px-8 py-3 rounded-full hover:bg-purple-700 transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 px-8 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSearching ? "🔍 Caut..." : "🔍 Caută cu AI"}
+                  {isSearching ? "🔍 Caut..." : "🤖 Caută cu AI"}
                 </button>
 
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="bg-gray-200 text-gray-700 px-8 py-3 rounded-full hover:bg-gray-300 transition-colors duration-200 font-medium"
-                  >
-                    Afișează toate
-                  </button>
-                )}
+                <GeminiVoiceSearch
+                  onTranscript={(transcript) => {
+                    setSearchQuery(transcript);
+                    // Optionally auto-submit the search
+                    // handleSearch(new Event('submit') as any);
+                  }}
+                  disabled={isSearching}
+                />
               </div>
             </form>
 
@@ -313,7 +313,7 @@ export default function PetsPage() {
                     </span>
                   </div>
                   {pet.promoted && (
-                    <div className="absolute top-4 left-4">
+                    <div className="absolute bottom-4 left-4">
                       <span className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-sm font-bold">
                         Promovat
                       </span>

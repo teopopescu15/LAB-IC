@@ -94,20 +94,6 @@ export default function ProfilePage() {
             <h2 className="text-2xl font-semibold text-gray-800">
               Informații personale
             </h2>
-            <div className="flex space-x-3">
-              <Link
-                href="/pets"
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-full transition-colors duration-200 font-medium"
-              >
-                🐾 Animăluțe
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-full transition-colors duration-200 font-medium"
-              >
-                Deconectare
-              </button>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -155,67 +141,23 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Navigation Cards */}
+        <div className="grid grid-cols-1 gap-6">
           <Link
             href="/pets"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200 group"
+            className="bg-white rounded-2xl shadow-md p-8 hover:shadow-lg transition-shadow duration-200 group"
           >
             <div className="text-center">
-              <div className="text-4xl mb-4">🐾</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <div className="text-6xl mb-6">🐾</div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">
                 Caută animăluțe
               </h3>
-              <p className="text-gray-600 text-sm">
-                Folosește căutarea cu AI pentru a găsi animalul perfect
+              <p className="text-gray-800 text-base">
+                Folosește căutarea cu AI pentru a găsi animalul perfect pentru
+                tine
               </p>
             </div>
           </Link>
-
-          <div className="bg-white rounded-lg shadow-md p-6 opacity-50">
-            <div className="text-center">
-              <div className="text-4xl mb-4">💝</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Animăluțe favorite
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Salvează animalele tale favorite (în curând)
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 opacity-50">
-            <div className="text-center">
-              <div className="text-4xl mb-4">⚙️</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Setări
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Personalizează experiența ta (în curând)
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="bg-white rounded-2xl shadow-md p-8 mt-8">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
-            🏆 Statistici
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600 mb-2">0</div>
-              <div className="text-gray-600">Căutări efectuate</div>
-            </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-3xl font-bold text-purple-600 mb-2">0</div>
-              <div className="text-gray-600">Animăluțe favorite</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl font-bold text-green-600 mb-2">1</div>
-              <div className="text-gray-600">Zile pe platformă</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
