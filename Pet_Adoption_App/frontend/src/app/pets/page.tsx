@@ -39,6 +39,7 @@ export default function PetsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [isImageSearching, setIsImageSearching] = useState(false);
 
   // Calculate pagination data
   const totalPages = Math.ceil(filteredPets.length / petsPerPage);
@@ -93,6 +94,44 @@ export default function PetsPage() {
       setIsLoading(false);
     }
   }
+
+  const handleImageSearch = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImageSearching(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/pets/gemini/image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error processing image: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setPets(data);
+      setFilteredPets(data);
+    } catch (error) {
+      console.error("Failed to process image:", error);
+      setError("Nu am putut procesa imaginea. Te rugăm să încerci din nou.");
+    } finally {
+      setIsImageSearching(false);
+    }
+  };
 
   // Handle search submission
   const handleSearch = async (e: React.FormEvent) => {
@@ -233,11 +272,30 @@ export default function PetsPage() {
                 <GeminiVoiceSearch
                   onTranscript={(transcript) => {
                     setSearchQuery(transcript);
-                    // Optionally auto-submit the search
-                    // handleSearch(new Event('submit') as any);
                   }}
                   disabled={isSearching}
                 />
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSearch}
+                    disabled={isImageSearching}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <label
+                    htmlFor="image-upload"
+                    className={`p-4 rounded-xl cursor-pointer flex items-center justify-center transition-all duration-200 ${
+                      isImageSearching
+                        ? "bg-yellow-500 text-white"
+                        : "bg-purple-600 text-white hover:bg-purple-700 hover:shadow-lg"
+                    }`}
+                  >
+                    {isImageSearching ? "⏳" : "📷"}
+                  </label>
+                </div>
               </div>
             </form>
 
